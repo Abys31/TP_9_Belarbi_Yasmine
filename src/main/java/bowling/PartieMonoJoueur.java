@@ -1,60 +1,90 @@
 package bowling;
 
-/**
- * Cette classe a pour but d'enregistrer le nombre de quilles abattues lors des
- * lancers successifs d'<b>un seul et même</b> joueur, et de calculer le score
- * final de ce joueur
- */
+import java.util.ArrayList;
+import java.util.List;
+
 public class PartieMonoJoueur {
 
-	/**
-	 * Constructeur
-	 */
+	private final List<Tour> tours;
+	private int indexTourActuel;
+
 	public PartieMonoJoueur() {
+		this.tours = new ArrayList<>();
+		for (int i = 0; i < 10; i++) {
+			tours.add(new Tour(i + 1, i == 9)); // Le dernier tour est spécial
+		}
+		this.indexTourActuel = 0;
 	}
 
-	/**
-	 * Cette méthode doit être appelée à chaque lancer de boule
-	 *
-	 * @param nombreDeQuillesAbattues le nombre de quilles abattues lors de ce lancer
-	 * @throws IllegalStateException si la partie est terminée
-	 * @return vrai si le joueur doit lancer à nouveau pour continuer son tour, faux sinon	
-	 */
 	public boolean enregistreLancer(int nombreDeQuillesAbattues) {
-		throw new UnsupportedOperationException("Pas encore implémenté");
+		if (estTerminee()) {
+			throw new IllegalStateException("La partie est terminée !");
+		}
+
+		Tour tourActuel = tours.get(indexTourActuel);
+		tourActuel.enregistrerLancer(nombreDeQuillesAbattues);
+
+		if (tourActuel.estComplet() && indexTourActuel < 9) {
+			calculerScore(); // Mise à jour des scores après chaque tour complet
+			indexTourActuel++;
+		}
+
+		return !tourActuel.estComplet(); // Retourne vrai si un autre lancer est nécessaire
 	}
 
-	/**
-	 * Cette méthode donne le score du joueur.
-	 * Si la partie n'est pas terminée, on considère que les lancers restants
-	 * abattent 0 quille.
-	 * @return Le score du joueur
-	 */
 	public int score() {
-		throw new UnsupportedOperationException("Pas encore implémenté");
+		calculerScore(); // Met à jour les scores avant de retourner le total
+		return tours.stream().mapToInt(Tour::getScore).sum();
 	}
 
-	/**
-	 * @return vrai si la partie est terminée pour ce joueur, faux sinon
-	 */
+	private void calculerScore() {
+		for (int i = 0; i <= indexTourActuel; i++) {
+			Tour tour = tours.get(i);
+			if (i < 9) { // Calcul pour les 9 premiers tours
+				if (tour.estStrike()) {
+					int bonus = calculerBonusStrike(i);
+					tour.setScore(10 + bonus);
+				} else if (tour.estSpare()) {
+					int bonus = calculerBonusSpare(i);
+					tour.setScore(10 + bonus);
+				} else {
+					tour.setScore(tour.getLancer1() + tour.getLancer2());
+				}
+			} else { // Calcul pour le dernier tour
+				tour.setScore(tour.getLancer1() + tour.getLancer2() + tour.getLancer3());
+			}
+		}
+	}
+
+	private int calculerBonusStrike(int index) {
+		if (index + 1 < tours.size()) {
+			Tour prochainTour = tours.get(index + 1);
+			if (prochainTour.estStrike() && index + 2 < tours.size()) {
+				return 10 + tours.get(index + 2).getLancer1(); // Deux strikes consécutifs
+			}
+			return prochainTour.getLancer1() + (prochainTour.getLancer2() == -1 ? 0 : prochainTour.getLancer2());
+		}
+		return 0;
+	}
+
+	private int calculerBonusSpare(int index) {
+		if (index + 1 < tours.size()) {
+			return tours.get(index + 1).getLancer1();
+		}
+		return 0;
+	}
+
 	public boolean estTerminee() {
-		throw new UnsupportedOperationException("Pas encore implémenté");
+		return indexTourActuel == 9 && tours.get(9).estComplet();
 	}
 
-
-	/**
-	 * @return Le numéro du tour courant [1..10], ou 0 si le jeu est fini
-	 */
 	public int numeroTourCourant() {
-		throw new UnsupportedOperationException("Pas encore implémenté");
+		return estTerminee() ? 0 : indexTourActuel + 1;
 	}
 
-	/**
-	 * @return Le numéro du prochain lancer pour tour courant [1..3], ou 0 si le jeu
-	 *         est fini
-	 */
 	public int numeroProchainLancer() {
-		throw new UnsupportedOperationException("Pas encore implémenté");
+		if (estTerminee()) return 0;
+		Tour tourActuel = tours.get(indexTourActuel);
+		return tourActuel.getLancer1() == -1 ? 1 : (tourActuel.getLancer2() == -1 ? 2 : 3);
 	}
-
 }
